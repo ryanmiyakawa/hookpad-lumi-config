@@ -18,13 +18,6 @@ int channel[numKeys];
 
 const int max = 64;
 
-// HEAP indices
-
-// ENUM values
-const int SCALE_DIATONIC = 0;
-const int SCALE_HM = 1;
- 
-
 
 int getColor(int index, int isStrike)
 {
@@ -163,8 +156,6 @@ void initialise()
     int initialKey = 0;
     int intialScale = 1;
 
-    // setHeapInt	(configItemId_keyIdx, 0);
-    // setHeapInt    (configItemId_scaleIdx, SCALE_DIATONIC);
 
     currentMode = 0;
     maxMode = 3;
