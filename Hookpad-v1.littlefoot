@@ -1,0 +1,311 @@
+const int numKeys = 24;
+
+// Some littlefoot config items:
+const int configItemId_mode = 0;
+const int configItemId_octave = 4;
+const int configItemId_transpose = 5;
+const int configItemId_requiresRepaint = 8;
+
+
+const int configItemId_keyIdx = 42;
+const int configItemId_scaleIdx = 50;
+
+int currentOctave;
+int currentMode;
+int maxMode;
+
+int channel[numKeys];
+
+const int max = 64;
+
+// HEAP indices
+
+// ENUM values
+const int SCALE_DIATONIC = 0;
+const int SCALE_HM = 1;
+ 
+
+
+int getColor(int index, int isStrike)
+{
+    int currentMode = getLocalConfig(configItemId_mode);
+    
+    //log(currentMode);
+    
+    int DIMSHIFT_DEFAULT;
+    int DIMSHIFT_DEFAULT_ACC;
+    int DIMSHIFT_STRIKE;
+    int DIMSHIFT_STRIKE_ACC;
+    int HIDE_ND;
+    int USE_RAINBOW_ACC;
+        
+    /*
+    
+    MODE 1: All keys rainbow
+    
+    MODE 2: Keys light up on key press
+    
+    MODE 3: Scale light up
+    
+    
+    */
+    if (currentMode <= 1){       
+         DIMSHIFT_DEFAULT = 1;
+         DIMSHIFT_DEFAULT_ACC = 1;
+         DIMSHIFT_STRIKE = 0;
+         DIMSHIFT_STRIKE_ACC = 0;
+         HIDE_ND = 0;
+         USE_RAINBOW_ACC = 1;
+    }
+    if (currentMode == 2){
+         DIMSHIFT_DEFAULT = 9;
+         DIMSHIFT_DEFAULT_ACC = 9;
+         DIMSHIFT_STRIKE = 0;
+         DIMSHIFT_STRIKE_ACC = 0;
+         HIDE_ND = 0;
+         USE_RAINBOW_ACC = 0;
+    }
+    if (currentMode == 3){
+         DIMSHIFT_DEFAULT = 1;
+         DIMSHIFT_DEFAULT_ACC = 9;
+         DIMSHIFT_STRIKE = 0;
+         DIMSHIFT_STRIKE_ACC = 0;
+         HIDE_ND = 0;
+         USE_RAINBOW_ACC = 0;
+    }
+    
+    
+    int shift;
+    if (isStrike){
+        shift = DIMSHIFT_STRIKE;
+    } else {
+        shift = DIMSHIFT_DEFAULT;
+    }
+    
+    
+    int alpha = 128;
+    int scale = 0; //getHeapInt(configItemId_scaleIdx);
+    
+    
+    //int scale = SCALE_HM;
+    if (index == 0)
+    {
+        return makeARGB(alpha, 0xFF >> shift, 0x01 >> shift, 0x00 >> shift);
+    }
+    if (index == 2)
+    {
+        return makeARGB(alpha, 0xFF >> shift, 0xB1 >> shift, 0x12 >> shift);
+    }
+    if (index == 4)
+    {
+        return makeARGB(alpha, 0xEF >> shift, 0xE6 >> shift, 0x01 >> shift);
+    }
+    if (index == 5)
+    {
+        return makeARGB(alpha, 0x03 >> shift, 0xD3 >> shift, 0x03 >> shift);
+    }
+    if (index == 7)
+    {
+        return makeARGB(alpha, 0x49 >> shift, 0x00 >> shift, 0xFF >> shift);
+    }
+    if (index == 9)
+    {
+        return makeARGB(alpha, 0x79 >> shift, 0x00 >> shift, 0xE5 >> shift);
+    }
+    if (index == 11)
+    {
+        return makeARGB(alpha, 0xFF >> shift, 0x01 >> shift, 0xCC >> shift);
+    }
+    
+    if (isStrike){
+        shift = DIMSHIFT_STRIKE_ACC;
+    } else {
+        shift = DIMSHIFT_DEFAULT_ACC;
+    }
+    
+    
+    
+    if (!USE_RAINBOW_ACC){
+        return makeARGB(alpha, 0x88 >> (shift), 0x88 >> (shift), 0x88 >> (shift));
+    }
+    
+
+    if (index == 1)
+    {
+        return makeARGB(alpha, 0xFF >> shift, 0x78 >> shift, 0x04 >> shift);
+    }
+    if (index == 3)
+    {
+        return makeARGB(alpha, 0xF4 >> shift, 0xD6 >> shift, 0x04 >> shift);
+    }
+    if (index == 6)
+    {
+        return makeARGB(alpha, 0x20 >> shift, 0xA0 >> shift, 0xA1 >> shift);
+    }
+    if (index == 8)
+    {
+        return makeARGB(alpha, 0x69 >> shift, 0x00 >> shift, 0xF0 >> shift);
+    }
+    if (index == 10)
+    {
+        return makeARGB(alpha, 0xBF >> shift, 0x01 >> shift, 0xDC >> shift);
+    }
+
+    
+
+    return makeARGB(alpha, 0x88 >> (shift), 0x88 >> (shift ), 0x88 >> (shift ));
+    
+}
+
+void initialise()
+{
+    
+    int initialKey = 0;
+    int intialScale = 1;
+
+    // setHeapInt	(configItemId_keyIdx, 0);
+    // setHeapInt    (configItemId_scaleIdx, SCALE_DIATONIC);
+
+    currentMode = 0;
+    maxMode = 3;
+    currentOctave = -1;
+    
+    setLocalConfig(configItemId_mode, currentMode);
+    setLocalConfig(configItemId_octave, currentOctave);
+    setLocalConfig(configItemId_transpose, initialKey);
+    setLocalConfig(configItemId_requiresRepaint, 1);
+    configSyncCluster();
+
+    repaint();
+    
+    
+}
+
+void repaint()
+{
+    if (getLocalConfig(configItemId_requiresRepaint) == 0){
+        return;
+    }
+
+    
+    
+    
+    for (int i = 0; i < 48; i++)
+    {
+        repaintSingle(i, 0);
+    }
+    
+    setLocalConfig(configItemId_requiresRepaint, 0);
+}
+
+void repaintSingle(int index, int isStrike)
+{
+    int keyOffset = getLocalConfig(configItemId_transpose);
+    fillPixel(getColor(    (index - keyOffset + 24) % 12, isStrike), index, 0);
+}
+
+void handleMIDI(int byte0, int byte1, int byte2)
+{
+
+    // If midi input is a certain value, shift key by this amount
+    if (byte0 == 0xF3)
+    {
+        // setHeapInt	(configItemId_keyIdx, byte1 & 0x0F);
+        // setHeapInt	(configItemId_scaleIdx, byte1 >> 4);
+
+        setLocalConfig(configItemId_transpose, byte1 & 0x0F);
+        setLocalConfig(configItemId_requiresRepaint, 1);
+
+        configSyncCluster();
+
+        repaint();
+    }
+}
+
+void keyStrike(int index, int z, int vz)
+{
+
+    repaintSingle(index, 1);
+
+    int note = getNote(index);
+    int chan = assignChannel(note);
+    channel[index] = chan;
+
+    sendNoteOn(chan, note, vz);
+}
+
+void keyLift(int index, int z, int vz)
+{
+
+    repaintSingle(index, 0);
+
+    int note = getNote(index);
+    int chan = channel[index];
+
+    sendNoteOff(chan, note, vz);
+    deassignChannel(note, chan);
+}
+
+void handleButtonDown(int index)
+{
+    currentOctave = getLocalConfig(configItemId_octave);
+    if (index == 1)
+    {
+        currentOctave--;
+    }
+
+    if (index == 2)
+    {
+        currentOctave++;
+    }
+    setLocalConfig(configItemId_octave, currentOctave);
+    configSyncCluster();
+    
+}
+
+void handleButtonUp (int index)
+{
+    if (index == 0)
+    {
+        currentMode++;
+        if (currentMode > maxMode){
+            currentMode = 0;
+        }
+        
+        setLocalConfig (configItemId_mode, currentMode);
+        setLocalConfig(configItemId_requiresRepaint, 1);
+        configSyncCluster ();
+        repaint();
+    }
+}
+
+void configSyncCluster()
+{
+    if (getNumBlocksInCurrentCluster() < 2)
+        return;
+
+    for (int i = 0; i < getNumBlocksInCurrentCluster(); ++i)
+    {
+        int blockID = getBlockIdForBlockInCluster(i);
+
+        if (blockID != getBlockIDForIndex(0))
+        {
+            setRemoteConfig(blockID, configItemId_octave, getLocalConfig(configItemId_octave));
+            setRemoteConfig(blockID, configItemId_transpose, getLocalConfig(configItemId_transpose));
+            setRemoteConfig(blockID, configItemId_mode, getLocalConfig(configItemId_mode));
+            setRemoteConfig(blockID, configItemId_requiresRepaint, getLocalConfig(configItemId_requiresRepaint));
+            
+        }
+        
+        //requestRemoteConfig(i, configItemId_transpose);
+    }
+}
+
+int getNote(int index)
+{
+    currentOctave = getLocalConfig(configItemId_octave);
+//     log(getClusterXpos());    log(getClusterXpos());
+    int octave = currentOctave + getClusterXpos() * 2;
+    //     log(getClusterXpos()*2);log(getClusterXpos()*2);
+    return 48 + ((octave)*12) + index;
+}
